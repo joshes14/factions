@@ -71,6 +71,16 @@ public class Faction {
     public ArrayList<Relationship.Permissions> guest_permissions
             = new ArrayList<>(FactionsMod.CONFIG.RELATIONSHIPS.DEFAULT_GUEST_PERMISSIONS);
 
+    @Field("Rules")
+    public Rules rules = new Rules();
+
+    public static class Rules {
+        @Field("Elytra")
+        public boolean elytra = true;
+
+        public Rules() {}
+    }
+
     public Faction(
             String name,
             String description,
@@ -213,12 +223,20 @@ public class Faction {
         adminPower += amount;
     }
 
+    public boolean isElytraAllowed() {
+        return rules != null && rules.elytra;
+    }
+
     public List<User> getUsers() {
         return User.getByFaction(id);
     }
 
     public List<Claim> getClaims() {
         return Claim.getByFaction(id);
+    }
+
+    public int getClaimCount() {
+        return Claim.getCountByFaction(id);
     }
 
     public void removeAllClaims() {
@@ -303,6 +321,9 @@ public class Faction {
             }
         }
         removeAllClaims();
+        for (GuestGrant grant : GuestGrant.getByFaction(id)) {
+            grant.remove();
+        }
         STORE.remove(id);
         FactionEvents.DISBAND.invoker().onDisband(this);
     }

@@ -8,6 +8,8 @@ import io.icker.factions.command.ClaimCommand;
 import io.icker.factions.command.CreateCommand;
 import io.icker.factions.command.DeclareCommand;
 import io.icker.factions.command.DisbandCommand;
+import io.icker.factions.command.GatherCommand;
+import io.icker.factions.command.GrantCommand;
 import io.icker.factions.command.HomeCommand;
 import io.icker.factions.command.InfoCommand;
 import io.icker.factions.command.InviteCommand;
@@ -20,8 +22,11 @@ import io.icker.factions.command.MemberCommand;
 import io.icker.factions.command.ModifyCommand;
 import io.icker.factions.command.PermissionCommand;
 import io.icker.factions.command.RankCommand;
+import io.icker.factions.command.RulesCommand;
 import io.icker.factions.command.SafeCommand;
 import io.icker.factions.command.SettingsCommand;
+import io.icker.factions.command.TeleportCommand;
+import io.icker.factions.command.TradeCommand;
 import io.icker.factions.command.XaeroSyncCommand;
 import io.icker.factions.config.Config;
 import io.icker.factions.core.ChatManager;
@@ -30,6 +35,8 @@ import io.icker.factions.core.FactionsManager;
 import io.icker.factions.core.InteractionManager;
 import io.icker.factions.core.ServerManager;
 import io.icker.factions.core.SoundManager;
+import io.icker.factions.core.TradeRequestManager;
+import io.icker.factions.core.TradeSession;
 import io.icker.factions.core.WorldManager;
 import io.icker.factions.net.PacketRegistry;
 import io.icker.factions.util.BlueMapWrapper;
@@ -79,6 +86,8 @@ public class FactionsMod implements ModInitializer {
         SoundManager.register();
         WorldManager.register();
         ClaimSyncSender.register();
+        TradeRequestManager.register();
+        TradeSession.register();
 
         CommandRegistrationCallback.EVENT.register(FactionsMod::registerCommands);
     }
@@ -113,8 +122,13 @@ public class FactionsMod implements ModInitializer {
                     new MemberCommand(),
                     new ModifyCommand(),
                     new RankCommand(),
+                    new RulesCommand(),
                     new SafeCommand(),
                     new PermissionCommand(),
+                    new GrantCommand(),
+                    new GatherCommand(),
+                    new TeleportCommand(),
+                    new TradeCommand(),
                     new XaeroSyncCommand()
                 };
 
