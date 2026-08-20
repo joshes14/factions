@@ -37,4 +37,5 @@ remappedSrc/
 
 .omo/
 logs/
-xaero/
+# anchor to repo root so it doesn't swallow src/**/xaero/ source packages
+/xaero/
