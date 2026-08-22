@@ -16,20 +16,22 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
 
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class WorldManager {
     private static final int FADE_STEPS = 6;
 
-    private static final HashMap<UUID, UUID> lastSeenFaction = new HashMap<>();
-    private static final HashMap<UUID, Integer> announceTicks = new HashMap<>();
-    private static final HashMap<UUID, Component> announceComponent = new HashMap<>();
-    private static final HashMap<UUID, Integer> announceFadeTicks = new HashMap<>();
-    private static final HashMap<UUID, Faction> announceFaction = new HashMap<>();
+    // ConcurrentHashMap: clearPlayerState() runs from ServerPlayConnectionEvents.DISCONNECT (netty
+    // thread) and races the main-thread tick loop iteration of announceTicks. See TeleportRequestManager.
+    private static final Map<UUID, UUID> lastSeenFaction = new ConcurrentHashMap<>();
+    private static final Map<UUID, Integer> announceTicks = new ConcurrentHashMap<>();
+    private static final Map<UUID, Component> announceComponent = new ConcurrentHashMap<>();
+    private static final Map<UUID, Integer> announceFadeTicks = new ConcurrentHashMap<>();
+    private static final Map<UUID, Faction> announceFaction = new ConcurrentHashMap<>();
 
     public static void register() {
         PlayerEvents.ON_MOVE.register(WorldManager::onMove);
@@ -145,7 +147,11 @@ public class WorldManager {
         UUID currentFactionId = claim != null ? claimFaction.getID() : null;
         if (Objects.equals(currentFactionId, lastSeenFaction.get(playerId))) return;
 
-        lastSeenFaction.put(playerId, currentFactionId);
+        if (currentFactionId != null) {
+            lastSeenFaction.put(playerId, currentFactionId);
+        } else {
+            lastSeenFaction.remove(playerId);
+        }
 
         announceTicks.remove(playerId);
         announceComponent.remove(playerId);
@@ -155,7 +161,11 @@ public class WorldManager {
         Component component = AnnouncerManager.buildAnnouncement(claimFaction);
         announceComponent.put(playerId, component);
         announceTicks.put(playerId, FactionsMod.CONFIG.ANNOUNCER.DISPLAY_SECONDS * 20);
-        announceFaction.put(playerId, claimFaction);
+        if (claimFaction != null) {
+            announceFaction.put(playerId, claimFaction);
+        } else {
+            announceFaction.remove(playerId);
+        }
         announceFadeTicks.put(playerId, 0);
         player.sendOverlayMessage(AnnouncerManager.buildFadeStep(claimFaction, 0, FADE_STEPS));
     }
