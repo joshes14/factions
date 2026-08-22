@@ -6,6 +6,54 @@ Format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.
 
 ---
 
+## [3.4.1] — 2026-08-22
+
+**Minecraft 26.2 · Fabric Loader 0.19.3 · Fabric API 0.155.2+26.2**
+
+Hotfix for a server-crashing `ConcurrentModificationException` in the announcer
+tick loop that surfaces under sustained multi-player load. **Fully save-compatible
+with 3.4** — no world data migration, no config migration, no API changes.
+
+### Fixed
+
+- **`ConcurrentModificationException` at `WorldManager.java:44` crashed the
+  server tick loop.** The five per-player announcer state maps
+  (`announceTicks`, `announceComponent`, `announceFadeTicks`, `announceFaction`,
+  `lastSeenFaction`) were plain `HashMap`s. `WorldManager.clearPlayerState` —
+  which mutates all five — is invoked from
+  `ServerPlayConnectionEvents.DISCONNECT`, and that Fabric event is not
+  guaranteed to run on the main server thread: it fires from
+  `ServerCommonNetworkHandler.onDisconnect`, which can be reached from the
+  netty channel-inactive callback when a client's TCP connection drops. The
+  main-thread tick handler iterates `announceTicks` every server tick, so a
+  disconnect that landed mid-iteration invalidated the iterator and threw
+  `CME` from `HashMap$HashIterator.nextNode`, taking the server down. Under
+  stable single-player use the race was effectively invisible; on a 4-player
+  server after ~18.75 h uptime it eventually triggered.
+
+  All five maps are now `ConcurrentHashMap`, matching the existing pattern in
+  `TeleportRequestManager` (which stores per-player state cleared on the same
+  DISCONNECT event). Two put-sites that previously stored `null` values
+  (`lastSeenFaction` and `announceFaction`) were converted to
+  put-when-non-null / remove-when-null — callers already treated `null` value
+  and missing entry identically (via `Objects.equals` compare and
+  null-tolerant `buildFadeStep`), so behaviour is unchanged.
+
+### Upgrade from 3.4
+
+1. Stop the server
+2. Replace `factions-mc26.2-3.4.jar` with `factions-mc26.2-3.4.1.jar`
+3. Start the server
+
+No config edits required. No data migration. Downgrading back to 3.4 is safe.
+
+### Testing
+
+`./gradlew build test` exits 0. All existing tests pass — no test changes were
+required to fix or validate this bug (it is a data-race fix, not a logic change).
+
+---
+
 ## [3.4] — 2026-08-20
 
 **Minecraft 26.2 · Fabric Loader 0.19.3 · Fabric API 0.155.2+26.2**
